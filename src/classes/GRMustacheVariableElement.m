@@ -113,13 +113,74 @@
 
 - (NSString *)htmlEscape:(NSString *)string
 {
-    NSMutableString *result = [NSMutableString stringWithString:string];
-    [result replaceOccurrencesOfString:@"&" withString:@"&amp;" options:NSLiteralSearch range:NSMakeRange(0, result.length)];
-    [result replaceOccurrencesOfString:@"<" withString:@"&lt;" options:NSLiteralSearch range:NSMakeRange(0, result.length)];
-    [result replaceOccurrencesOfString:@">" withString:@"&gt;" options:NSLiteralSearch range:NSMakeRange(0, result.length)];
-    [result replaceOccurrencesOfString:@"\"" withString:@"&quot;" options:NSLiteralSearch range:NSMakeRange(0, result.length)];
-    [result replaceOccurrencesOfString:@"'" withString:@"&apos;" options:NSLiteralSearch range:NSMakeRange(0, result.length)];
-    return result;
+    NSUInteger length = string.length;
+    
+    // get a buffer of characters in string
+    const unichar *buffer = CFStringGetCharactersPtr((CFStringRef)string);
+	if (!buffer) {
+		NSMutableData *data = [NSMutableData dataWithLength:length * sizeof(UniChar)];
+		[string getCharacters:[data mutableBytes] range:(NSRange){ .location = 0, .length = length }];
+		buffer = [data bytes];
+	}
+    
+    // this string will get filled as we consume buffer's characters
+	NSMutableString *resultString = [NSMutableString stringWithCapacity:length];
+    
+    // The accumulator buffer gathers characters until next character that needs escaping.
+    // Its length can not be higher than input string's length.
+    NSMutableData *accumulatorData = [NSMutableData dataWithCapacity:sizeof(unichar) * length];
+    unichar *accumulatorBuffer = (unichar *)[accumulatorData mutableBytes];
+    NSUInteger accumulatorBufferLength = 0;
+    
+#define APPEND_ACCUMULATOR_TO_RESULT_STRING \
+    if (accumulatorBufferLength) { \
+        CFStringAppendCharacters((CFMutableStringRef)resultString, accumulatorBuffer, accumulatorBufferLength); \
+        accumulatorBufferLength = 0; \
+    }
+    
+    for (NSUInteger i=0; i<length; ++i) {
+        UniChar c = buffer[i];
+        switch (c) {
+            case '&':
+                APPEND_ACCUMULATOR_TO_RESULT_STRING
+                [resultString appendString:@"&amp;"];
+                break;
+            
+            case '<':
+                APPEND_ACCUMULATOR_TO_RESULT_STRING
+                [resultString appendString:@"&lt;"];
+                break;
+                
+            case '>':
+                APPEND_ACCUMULATOR_TO_RESULT_STRING
+                [resultString appendString:@"&gt;"];
+                break;
+                
+            case '"':
+                APPEND_ACCUMULATOR_TO_RESULT_STRING
+                [resultString appendString:@"&quot;"];
+                break;
+                
+            case '\'':
+                APPEND_ACCUMULATOR_TO_RESULT_STRING
+                [resultString appendString:@"&apos;"];
+                break;
+                
+            default:
+                // append character to accumulator
+                accumulatorBuffer[accumulatorBufferLength] = c;
+                ++accumulatorBufferLength;
+                break;
+        }
+    }
+    
+    // consume accumulator
+	APPEND_ACCUMULATOR_TO_RESULT_STRING
+    
+#undef APPEND_ACCUMULATOR_TO_RESULT_STRING
+    
+    // done
+    return resultString;
 }
 
 @end
