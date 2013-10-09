@@ -75,13 +75,13 @@ static const NSString *GRMustacheNSUndefinedKeyExceptionGuardSilentObjects = @"G
     static BOOL needsSwizzle = YES;
     if (needsSwizzle) {
         [NSObject jr_swizzleMethod:@selector(valueForUndefinedKey:)
-                        withMethod:@selector(GRMustacheSilentValueForUndefinedKey_NSObject:)
+                        withMethod:NSSelectorFromString(@"GRMustacheSilentValueForUndefinedKey_NSObject:")
                              error:nil];
         
         Class NSManagedObjectClass = NSClassFromString(@"NSManagedObject");
         if (NSManagedObjectClass) {
             [NSManagedObjectClass jr_swizzleMethod:@selector(valueForUndefinedKey:)
-                                        withMethod:@selector(GRMustacheSilentValueForUndefinedKey_NSManagedObject:)
+                                        withMethod:NSSelectorFromString(@"GRMustacheSilentValueForUndefinedKey_NSManagedObject:")
                                              error:nil];
         }
         
@@ -94,6 +94,7 @@ static const NSString *GRMustacheNSUndefinedKeyExceptionGuardSilentObjects = @"G
 
 // =============================================================================
 #pragma mark - NSObject(GRMustacheNSUndefinedKeyExceptionGuard)
+
 
 @implementation NSObject(GRMustacheNSUndefinedKeyExceptionGuard)
 
